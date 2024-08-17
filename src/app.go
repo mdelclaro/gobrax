@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/mdelclaro/gobrax/src/config"
 	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/shared"
 	"github.com/mdelclaro/gobrax/src/utils"
@@ -20,5 +21,5 @@ func main() {
 		return fiber.ErrNotFound
 	})
 
-	log.Fatal(app.Listen(":3000"))
+	log.Fatal(app.Listen(config.GetEnv("APP_PORT")))
 }

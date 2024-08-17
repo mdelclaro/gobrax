@@ -25,7 +25,8 @@ func StartDb() Dbinstance {
 		return DB
 	}
 
-	host := config.GetEnv("DB_HOST")
+	// host := config.GetEnv("DB_HOST")
+	host := "db"
 	user := config.GetEnv("DB_USER")
 	pwd := config.GetEnv("DB_PASSWORD")
 	dbName := config.GetEnv("DB_NAME")
