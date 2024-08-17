@@ -1,4 +1,4 @@
-package handlers
+package truck
 
 import (
 	"encoding/json"
@@ -14,6 +14,16 @@ import (
 	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"github.com/mdelclaro/gobrax/src/shared"
 )
+
+func SetupTruckRoutes(router fiber.Router) {
+	truck := router.Group("/truck")
+	truck.Get("/:id", GetTruckByID)
+	truck.Get("/", GetAllTrucks)
+	truck.Post("/", AddTruck)
+	truck.Put("/", UpdateTruck)
+	truck.Delete("/:id", DeleteTruck)
+	truck.Post("/update-driver/:id", UpdateTruckDriver)
+}
 
 func GetAllTrucks(c fiber.Ctx) error {
 	trucks := []entities.Truck{}
@@ -97,9 +107,9 @@ func UpdateTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("id is required")))
 	}
 
-	// if truck.DriverID != nil {
-	// 	return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't directly update driver id")))
-	// }
+	if truck.DriverID != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't directly update driver id")))
+	}
 
 	if err := shared.InitRepo(database.DB.Db).Update(&truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))

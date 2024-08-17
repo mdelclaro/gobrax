@@ -1,4 +1,4 @@
-package tests
+package truck
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"github.com/mdelclaro/gobrax/src/api/helpers"
 	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/repository/entities"
-	"github.com/mdelclaro/gobrax/src/utils"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,7 +29,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	app = utils.SetupApp()
+	app = fiber.New()
+	api := app.Group("/api")
+
+	SetupTruckRoutes(api)
 
 	exitCode := m.Run()
 	os.Exit(exitCode)
@@ -183,7 +185,6 @@ func TestTruckHandlers(t *testing.T) {
 				LicensePlate:     "456",
 				FuelUsed:         decimal.NewFromInt(0),
 				DistanceTraveled: decimal.NewFromInt(0),
-				DriverID:         &id,
 			},
 			expectedCode: 200,
 			expectedBody: map[string]any{

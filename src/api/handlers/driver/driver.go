@@ -1,4 +1,4 @@
-package handlers
+package driver
 
 import (
 	"encoding/json"
@@ -14,6 +14,15 @@ import (
 	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"github.com/mdelclaro/gobrax/src/shared"
 )
+
+func SetupDriverRoutes(router fiber.Router) {
+	driver := router.Group("/driver")
+	driver.Get("/:id", GetDriverByID)
+	driver.Get("/", GetAllDrivers)
+	driver.Post("/", AddDriver)
+	driver.Put("/", UpdateDriver)
+	driver.Delete("/:id", DeleteDriver)
+}
 
 func GetAllDrivers(c fiber.Ctx) error {
 	drivers := []entities.Driver{}

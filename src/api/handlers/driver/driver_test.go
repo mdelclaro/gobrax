@@ -1,4 +1,4 @@
-package tests
+package driver
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"github.com/mdelclaro/gobrax/src/api/helpers"
 	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/repository/entities"
-	"github.com/mdelclaro/gobrax/src/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +28,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	app = utils.SetupApp()
+	app = fiber.New()
+	api := app.Group("/api")
+
+	SetupDriverRoutes(api)
 
 	exitCode := m.Run()
 	os.Exit(exitCode)
