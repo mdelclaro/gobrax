@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/mdelclaro/gobrax/src/config"
-	"github.com/mdelclaro/gobrax/src/models"
+	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -17,7 +17,11 @@ type Dbinstance struct {
 
 var DB Dbinstance
 
-func ConnectDb() {
+func StartDb() Dbinstance {
+	if DB.Db != nil {
+		return DB
+	}
+
 	host := config.GetEnv("DB_HOST")
 	user := config.GetEnv("DB_USER")
 	pwd := config.GetEnv("DB_PASSWORD")
@@ -37,11 +41,13 @@ func ConnectDb() {
 	db.Logger = logger.Default.LogMode(logger.Info)
 
 	db.AutoMigrate(
-		&models.Driver{},
-		&models.Truck{},
+		&entities.Driver{},
+		&entities.Truck{},
 	)
 
 	DB = Dbinstance{
 		Db: db,
 	}
+
+	return DB
 }

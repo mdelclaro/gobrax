@@ -7,10 +7,12 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/mdelclaro/gobrax/src/api/routes"
 	database "github.com/mdelclaro/gobrax/src/db"
+	"github.com/mdelclaro/gobrax/src/shared"
 )
 
 func main() {
-	database.ConnectDb()
+	database.StartDb()
+	shared.InitRepo()
 	app := fiber.New()
 
 	routes.SetUpRoutes(app)

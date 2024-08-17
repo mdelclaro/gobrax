@@ -7,5 +7,10 @@ import (
 
 func SetupTruckRoutes(router fiber.Router) {
 	truck := router.Group("/truck")
+	truck.Get("/:id", handlers.GetTruckByID)
 	truck.Get("/", handlers.GetAllTrucks)
+	truck.Post("/", handlers.AddTruck)
+	truck.Put("/", handlers.UpdateTruck)
+	truck.Delete("/:id", handlers.DeleteTruck)
+	truck.Post("/update-driver/:id", handlers.UpdateTruckDriver)
 }

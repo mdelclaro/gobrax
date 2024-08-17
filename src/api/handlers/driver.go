@@ -5,35 +5,40 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 	"github.com/mdelclaro/gobrax/src/api/helpers"
-	database "github.com/mdelclaro/gobrax/src/db"
-	"github.com/mdelclaro/gobrax/src/models"
-	"gorm.io/gorm/clause"
+	"github.com/mdelclaro/gobrax/src/repository/entities"
+	"github.com/mdelclaro/gobrax/src/shared"
 )
 
 func GetAllDrivers(c fiber.Ctx) error {
-	driver := models.Driver{}
+	drivers := []entities.Driver{}
 
-	if tx := database.DB.Db.Find(&driver); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().FindAll(&drivers); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
-	if driver.ID == 0 {
+	if len(drivers) == 0 {
 		return c.Status(http.StatusNoContent).JSON(helpers.ParseResultToMap(""))
 	}
 
-	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(driver))
+	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(drivers))
 }
 
 func GetDriverByID(c fiber.Ctx) error {
-	driver := models.Driver{}
-	id := c.Params("id")
+	driver := entities.Driver{}
 
-	if tx := database.DB.Db.First(&driver, id); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	id := c.Params("id")
+	parsedId, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
+	}
+
+	if err := shared.InitRepo().FindById(&driver, int32(parsedId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	if driver.ID == 0 {
@@ -44,7 +49,7 @@ func GetDriverByID(c fiber.Ctx) error {
 }
 
 func AddDriver(c fiber.Ctx) error {
-	driver := models.Driver{}
+	driver := entities.Driver{}
 
 	if err := json.Unmarshal(c.Body(), &driver); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
@@ -69,15 +74,15 @@ func AddDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("missing required field(s): %s", required)))
 	}
 
-	if tx := database.DB.Db.Create(&driver); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Create(&driver); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusCreated).JSON(helpers.ParseResultToMap(driver))
 }
 
 func UpdateDriver(c fiber.Ctx) error {
-	driver := models.Driver{}
+	driver := entities.Driver{}
 
 	if err := json.Unmarshal(c.Body(), &driver); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(err.Error())
@@ -87,8 +92,8 @@ func UpdateDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("id is required")))
 	}
 
-	if tx := database.DB.Db.Model(&driver).Clauses(clause.Returning{}).Updates(driver); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Update(&driver); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(driver))
@@ -96,9 +101,13 @@ func UpdateDriver(c fiber.Ctx) error {
 
 func DeleteDriver(c fiber.Ctx) error {
 	id := c.Params("id")
+	parsedId, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
+	}
 
-	if tx := database.DB.Db.Delete(models.Driver{}, id); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Delete(entities.Driver{}, int32(parsedId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(""))

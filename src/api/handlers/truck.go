@@ -5,35 +5,40 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 	"github.com/mdelclaro/gobrax/src/api/helpers"
-	database "github.com/mdelclaro/gobrax/src/db"
-	"github.com/mdelclaro/gobrax/src/models"
-	"gorm.io/gorm/clause"
+	"github.com/mdelclaro/gobrax/src/repository/entities"
+	"github.com/mdelclaro/gobrax/src/shared"
 )
 
 func GetAllTrucks(c fiber.Ctx) error {
-	truck := models.Truck{}
+	trucks := []entities.Truck{}
 
-	if tx := database.DB.Db.Find(&truck); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo("Driver").FindAll(&trucks, "Driver"); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
-	if truck.ID == 0 {
+	if len(trucks) == 0 {
 		return c.Status(http.StatusNoContent).JSON(helpers.ParseResultToMap(""))
 	}
 
-	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(truck))
+	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(trucks))
 }
 
 func GetTruckByID(c fiber.Ctx) error {
-	truck := models.Truck{}
-	id := c.Params("id")
+	truck := entities.Truck{}
 
-	if tx := database.DB.Db.First(&truck, id); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	id := c.Params("id")
+	parsedId, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
+	}
+
+	if err := shared.InitRepo("Driver").FindById(&truck, int32(parsedId), "Driver"); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	if truck.ID == 0 {
@@ -44,7 +49,7 @@ func GetTruckByID(c fiber.Ctx) error {
 }
 
 func AddTruck(c fiber.Ctx) error {
-	truck := models.Truck{}
+	truck := entities.Truck{}
 
 	if err := json.Unmarshal(c.Body(), &truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
@@ -69,15 +74,15 @@ func AddTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("missing required field(s): %s", required)))
 	}
 
-	if tx := database.DB.Db.Create(&truck); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Create(&truck); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusCreated).JSON(helpers.ParseResultToMap(truck))
 }
 
 func UpdateTruck(c fiber.Ctx) error {
-	truck := models.Truck{}
+	truck := entities.Truck{}
 
 	if err := json.Unmarshal(c.Body(), &truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(err.Error())
@@ -87,24 +92,17 @@ func UpdateTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("id is required")))
 	}
 
-	if truck.DriverID != 0 {
-		t := models.Truck{}
-
-		if tx := database.DB.Db.First(&t, truck.ID); tx.Error != nil {
-			return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
-		}
-
-		if truck.ID == 0 {
-			return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(fmt.Errorf("invalid truck id")))
-		}
-
-		if t.DriverID != 0 {
-			return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("truck already in use by a driver")))
-		}
+	if truck.DriverID != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't directly update driver id")))
 	}
 
-	if tx := database.DB.Db.Model(&truck).Clauses(clause.Returning{}).Updates(truck); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Update(&truck); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
+	}
+
+	// return updated truck with driver association
+	if err := shared.InitRepo("Driver").FindById(&truck, truck.ID, "Driver"); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(truck))
@@ -112,10 +110,59 @@ func UpdateTruck(c fiber.Ctx) error {
 
 func DeleteTruck(c fiber.Ctx) error {
 	id := c.Params("id")
+	parsedId, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
+	}
 
-	if tx := database.DB.Db.Delete(models.Truck{}, id); tx.Error != nil {
-		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(tx.Error))
+	if err := shared.InitRepo().Delete(entities.Truck{}, int32(parsedId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(""))
+}
+
+func UpdateTruckDriver(c fiber.Ctx) error {
+	truck := entities.Truck{}
+	driver := entities.Driver{}
+
+	truckId := c.Params("id")
+	driverId := c.Query("driverId")
+
+	parsedTruckId, err := strconv.Atoi(truckId)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid truck id provided: %s", err.Error())))
+	}
+
+	if err := shared.InitRepo().FindById(&truck, int32(parsedTruckId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
+	}
+
+	if truck.ID == 0 {
+		return c.Status(http.StatusNotFound).JSON(helpers.BuildError(fmt.Errorf("truck not found")))
+	}
+
+	parsedDriverId, err := strconv.Atoi(driverId)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid driver id provided: %s", err.Error())))
+	}
+
+	if err := shared.InitRepo().FindById(&driver, int32(parsedDriverId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
+	}
+
+	if driver.ID == 0 || !driver.IsActive {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid driver provided")))
+	}
+
+	if err := shared.InitRepo().UpdateColumn(&truck, "driver_id", int32(parsedDriverId)); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
+	}
+
+	// return updated truck with driver association
+	if err := shared.InitRepo("Driver").FindById(&truck, int32(parsedTruckId), "Driver"); err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
+	}
+
+	return c.Status(http.StatusOK).JSON(helpers.ParseResultToMap(truck))
 }
