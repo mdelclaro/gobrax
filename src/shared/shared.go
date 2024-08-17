@@ -1,11 +1,11 @@
 package shared
 
 import (
-	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/repository"
 	"github.com/mdelclaro/gobrax/src/repository/interfaces"
+	"gorm.io/gorm"
 )
 
-func InitRepo(joins ...string) interfaces.IRepository {
-	return repository.NewRepository(database.StartDb().Db, joins...)
+func InitRepo(db *gorm.DB, joins ...string) interfaces.IRepository {
+	return repository.NewRepository(db, joins...)
 }

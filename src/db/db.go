@@ -1,9 +1,12 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
+	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/mdelclaro/gobrax/src/config"
 	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"gorm.io/driver/postgres"
@@ -50,4 +53,27 @@ func StartDb() Dbinstance {
 	}
 
 	return DB
+}
+
+func StartDbMock(t *testing.T) (*sql.DB, *gorm.DB, sqlmock.Sqlmock) {
+	sqldb, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: sqldb,
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	DB = Dbinstance{
+		Db: db,
+	}
+
+	return sqldb, db, mock
 }

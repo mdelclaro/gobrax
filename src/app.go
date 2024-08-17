@@ -5,17 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/mdelclaro/gobrax/src/api/routes"
 	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/shared"
+	"github.com/mdelclaro/gobrax/src/utils"
 )
 
 func main() {
 	database.StartDb()
-	shared.InitRepo()
-	app := fiber.New()
-
-	routes.SetUpRoutes(app)
+	shared.InitRepo(database.DB.Db)
+	app := utils.SetupApp()
 
 	app.Use(cors.New())
 	app.Use(func(c fiber.Ctx) error {

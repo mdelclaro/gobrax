@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 	"github.com/mdelclaro/gobrax/src/api/helpers"
+	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"github.com/mdelclaro/gobrax/src/shared"
 )
@@ -17,7 +18,7 @@ import (
 func GetAllDrivers(c fiber.Ctx) error {
 	drivers := []entities.Driver{}
 
-	if err := shared.InitRepo().FindAll(&drivers); err != nil {
+	if err := shared.InitRepo(database.DB.Db).FindAll(&drivers); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -37,7 +38,7 @@ func GetDriverByID(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo().FindById(&driver, int32(parsedId)); err != nil {
+	if err := shared.InitRepo(database.DB.Db).FindById(&driver, int32(parsedId)); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -74,7 +75,7 @@ func AddDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("missing required field(s): %s", required)))
 	}
 
-	if err := shared.InitRepo().Create(&driver); err != nil {
+	if err := shared.InitRepo(database.DB.Db).Create(&driver); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -92,7 +93,7 @@ func UpdateDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("id is required")))
 	}
 
-	if err := shared.InitRepo().Update(&driver); err != nil {
+	if err := shared.InitRepo(database.DB.Db).Update(&driver); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -106,7 +107,7 @@ func DeleteDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo().Delete(entities.Driver{}, int32(parsedId)); err != nil {
+	if err := shared.InitRepo(database.DB.Db).Delete(entities.Driver{}, int32(parsedId)); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 

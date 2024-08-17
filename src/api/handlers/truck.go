@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v3"
 	"github.com/mdelclaro/gobrax/src/api/helpers"
+	database "github.com/mdelclaro/gobrax/src/db"
 	"github.com/mdelclaro/gobrax/src/repository/entities"
 	"github.com/mdelclaro/gobrax/src/shared"
 )
@@ -17,7 +18,7 @@ import (
 func GetAllTrucks(c fiber.Ctx) error {
 	trucks := []entities.Truck{}
 
-	if err := shared.InitRepo("Driver").FindAll(&trucks, "Driver"); err != nil {
+	if err := shared.InitRepo(database.DB.Db, "Driver").FindAll(&trucks, "Driver"); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -37,7 +38,7 @@ func GetTruckByID(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo("Driver").FindById(&truck, int32(parsedId), "Driver"); err != nil {
+	if err := shared.InitRepo(database.DB.Db, "Driver").FindById(&truck, int32(parsedId), "Driver"); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -74,7 +75,11 @@ func AddTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("missing required field(s): %s", required)))
 	}
 
-	if err := shared.InitRepo().Create(&truck); err != nil {
+	if truck.DriverID != nil {
+		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't add driver directly to truck")))
+	}
+
+	if err := shared.InitRepo(database.DB.Db).Create(&truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -92,16 +97,16 @@ func UpdateTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("id is required")))
 	}
 
-	if truck.DriverID != nil {
-		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't directly update driver id")))
-	}
+	// if truck.DriverID != nil {
+	// 	return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("can't directly update driver id")))
+	// }
 
-	if err := shared.InitRepo().Update(&truck); err != nil {
+	if err := shared.InitRepo(database.DB.Db).Update(&truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	// return updated truck with driver association
-	if err := shared.InitRepo("Driver").FindById(&truck, truck.ID, "Driver"); err != nil {
+	if err := shared.InitRepo(database.DB.Db, "Driver").FindById(&truck, truck.ID, "Driver"); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -115,7 +120,7 @@ func DeleteTruck(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo().Delete(entities.Truck{}, int32(parsedId)); err != nil {
+	if err := shared.InitRepo(database.DB.Db).Delete(entities.Truck{}, int32(parsedId)); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -134,7 +139,7 @@ func UpdateTruckDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid truck id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo().FindById(&truck, int32(parsedTruckId)); err != nil {
+	if err := shared.InitRepo(database.DB.Db).FindById(&truck, int32(parsedTruckId)); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -147,7 +152,7 @@ func UpdateTruckDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid driver id provided: %s", err.Error())))
 	}
 
-	if err := shared.InitRepo().FindById(&driver, int32(parsedDriverId)); err != nil {
+	if err := shared.InitRepo(database.DB.Db).FindById(&driver, int32(parsedDriverId)); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
@@ -155,12 +160,15 @@ func UpdateTruckDriver(c fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(helpers.BuildError(fmt.Errorf("invalid driver provided")))
 	}
 
-	if err := shared.InitRepo().UpdateColumn(&truck, "driver_id", int32(parsedDriverId)); err != nil {
+	truck.DriverID = &driver.ID
+	truck.Driver = nil
+
+	if err := shared.InitRepo(database.DB.Db).Update(&truck); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 
 	// return updated truck with driver association
-	if err := shared.InitRepo("Driver").FindById(&truck, int32(parsedTruckId), "Driver"); err != nil {
+	if err := shared.InitRepo(database.DB.Db, "Driver").FindById(&truck, int32(parsedTruckId), "Driver"); err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(helpers.BuildError(err))
 	}
 

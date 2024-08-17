@@ -47,11 +47,8 @@ func (r *Repository) Update(target any) error {
 	return r.HandleError(res)
 }
 
-func (r *Repository) UpdateColumn(target any, column string, value any) error {
-	res := r.db.
-		Model(target).
-		Clauses(clause.Returning{}).
-		Update(column, value)
+func (r *Repository) UpdateColumn(target any, id int32, column string, value any) error {
+	res := r.db.Delete(target, id)
 
 	return r.HandleError(res)
 }
